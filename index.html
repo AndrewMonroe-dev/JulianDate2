@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Julian Code Date Checker</title>
+  <meta name="theme-color" content="#111827" />
+  <style>
+    :root { --bg:#0b1220; --card:#111827; --muted:#9CA3AF; --text:#F9FAFB; --border:#243047; --good:#10B981; --bad:#EF4444; --warn:#F59E0B; --accent:#60A5FA; }
+    *{ box-sizing:border-box; }
+    body{ margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:linear-gradient(180deg,#070b14, var(--bg)); color:var(--text); }
+    .wrap{ max-width:820px; margin:0 auto; padding:24px 16px 56px; }
+    h1{ font-size:22px; margin:8px 0 6px; }
+    p{ margin:0 0 14px; color:var(--muted); line-height:1.35; }
+    .card{ background:rgba(17,24,39,.92); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    .grid{ display:grid; grid-template-columns:1fr; gap:12px; }
+    @media(min-width:700px){ .grid{ grid-template-columns:1fr 1fr; } }
+    label{ display:block; font-size:12px; color:var(--muted); margin:0 0 6px; }
+    select,input{ width:100%; padding:14px 12px; font-size:16px; border-radius:12px; border:1px solid var(--border); background:#0b1020; color:var(--text); outline:none; }
+    input::placeholder{ color:#6B7280; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; }
+    .btn{ flex:1; min-width:140px; padding:12px 12px; border-radius:12px; border:1px solid var(--border); background:#0b1020; color:var(--text); font-size:15px; cursor:pointer; }
+    .btn.primary{ border-color:#1f3a5c; background:linear-gradient(180deg,#0b1930,#0b1020); }
+    .btn:active{ transform:translateY(1px); }
+    .status{ margin-top:14px; padding:14px; border-radius:14px; border:1px solid var(--border); background:rgba(11,16,32,.7); }
+    .status h2{ font-size:16px; margin:0 0 6px; }
+    .pill{ display:inline-block; padding:6px 10px; border-radius:999px; font-weight:700; letter-spacing:.2px; font-size:12px; }
+    .pill.good{ background:rgba(16,185,129,.15); color:#A7F3D0; border:1px solid rgba(16,185,129,.35); }
+    .pill.bad{ background:rgba(239,68,68,.15); color:#FECACA; border:1px solid rgba(239,68,68,.35); }
+    .pill.warn{ background:rgba(245,158,11,.15); color:#FDE68A; border:1px solid rgba(245,158,11,.35); }
+    .kv{ display:grid; grid-template-columns:140px 1fr; gap:8px 10px; margin-top:10px; }
+    .k{ color:var(--muted); font-size:13px; }
+    .v{ font-size:14px; }
+    .small{ font-size:12px; color:var(--muted); margin-top:10px; }
+    .hint{ margin-top:12px; padding:12px; border-radius:12px; border:1px dashed rgba(96,165,250,.35); background:rgba(96,165,250,.08); color:#DBEAFE; }
+    code{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Julian Code Date Checker</h1>
+    <p>For wine product dating codes in <strong>YYDDD</strong> format (example: <code>24032</code> = 2024, day 32). Select type, enter code, and it returns IN DATE / OUT OF DATE.</p>
+
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label for="ptype">Product Type</label>
+          <select id="ptype">
+            <option value="WHITES">WHITES (12 months)</option>
+            <option value="REDS">REDS (18 months)</option>
+            <option value="MINI">MINI (18 months)</option>
+          </select>
+        </div>
+        <div>
+          <label for="code">Julian Code (YYDDD)</label>
+          <input id="code" inputmode="numeric" placeholder="e.g., 24032" autocomplete="off" />
+        </div>
+        <div>
+          <label for="asof">As Of Date</label>
+          <input id="asof" type="date" />
+        </div>
+        <div>
+          <label>Actions</label>
+          <div class="row">
+            <button class="btn primary" id="check">Check</button>
+            <button class="btn" id="clear">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="status" id="statusBox" aria-live="polite">
+        <h2>Status: <span class="pill warn" id="statusPill">ENTER A CODE</span></h2>
+        <div class="kv">
+          <div class="k">Pack Date</div><div class="v" id="packDate">—</div>
+          <div class="k">Shelf Life</div><div class="v" id="shelfLife">—</div>
+          <div class="k">Best-By Date</div><div class="v" id="bestBy">—</div>
+          <div class="k">Days Remaining</div><div class="v" id="daysRemaining">—</div>
+        </div>
+        <div class="small" id="note">Tip: You can change “As Of Date” if you’re checking inventory as of a prior visit.</div>
+      </div>
+
+      <div class="hint">
+        <div><strong>Phone-friendly use:</strong> If you host this as a webpage, you can “Add to Home Screen” and it behaves like an app.</div>
+      </div>
+    </div>
+
+    <p class="small" style="margin-top:14px;">Assumes standard calendar dating and uses <code>EDATE</code>-equivalent logic (adds months). If your plant uses a different code pattern (e.g., includes letters or uses DDDYY), this file can be adjusted.</p>
+  </div>
+
+<script>
+(function(){
+  const ptype = document.getElementById('ptype');
+  const codeEl = document.getElementById('code');
+  const asofEl = document.getElementById('asof');
+  const statusPill = document.getElementById('statusPill');
+  const packDateEl = document.getElementById('packDate');
+  const shelfLifeEl = document.getElementById('shelfLife');
+  const bestByEl = document.getElementById('bestBy');
+  const daysRemainingEl = document.getElementById('daysRemaining');
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function fmt(d){
+    const m = d.getMonth()+1;
+    const day = d.getDate();
+    const y = d.getFullYear();
+    return `${m}/${day}/${y}`;
+  }
+  function todayISO(){
+    const d = new Date();
+    d.setHours(0,0,0,0);
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  }
+
+  // Add months like Excel EDATE: preserves day when possible; clamps to end of month.
+  function addMonthsEDATE(date, months){
+    const d = new Date(date.getTime());
+    const day = d.getDate();
+    const targetMonth = d.getMonth() + months;
+
+    // Move to 1st of target month to avoid rollover issues, then clamp day
+    const first = new Date(d.getFullYear(), targetMonth, 1);
+    const lastDay = new Date(first.getFullYear(), first.getMonth()+1, 0).getDate();
+    const clampedDay = Math.min(day, lastDay);
+    return new Date(first.getFullYear(), first.getMonth(), clampedDay);
+  }
+
+  function parseYYDDD(raw){
+    const s = String(raw).trim();
+    if(!/^\d{5}$/.test(s)) return null;
+    const yy = parseInt(s.slice(0,2),10);
+    const ddd = parseInt(s.slice(2),10);
+    if(ddd < 1 || ddd > 366) return null;
+    const year = 2000 + yy;
+    const pack = new Date(year, 0, 1);
+    pack.setDate(pack.getDate() + (ddd - 1));
+    pack.setHours(0,0,0,0);
+    return pack;
+  }
+
+  function shelfMonths(type){
+    if(type === 'WHITES') return 12;
+    return 18; // REDS + MINI
+  }
+
+  function setPill(kind, text){
+    statusPill.className = 'pill ' + kind;
+    statusPill.textContent = text;
+  }
+
+  function clearOut(){
+    setPill('warn','ENTER A CODE');
+    packDateEl.textContent = '—';
+    shelfLifeEl.textContent = '—';
+    bestByEl.textContent = '—';
+    daysRemainingEl.textContent = '—';
+  }
+
+  function check(){
+    const raw = codeEl.value.replace(/\s+/g,'');
+    const pack = parseYYDDD(raw);
+    if(!pack){
+      clearOut();
+      setPill('warn','INVALID CODE');
+      return;
+    }
+
+    const months = shelfMonths(ptype.value);
+    const bestBy = addMonthsEDATE(pack, months);
+    bestBy.setHours(0,0,0,0);
+
+    const asof = asofEl.value ? new Date(asofEl.value + 'T00:00:00') : new Date(todayISO() + 'T00:00:00');
+    asof.setHours(0,0,0,0);
+
+    const msPerDay = 24*60*60*1000;
+    const diffDays = Math.floor((bestBy.getTime() - asof.getTime())/msPerDay);
+
+    packDateEl.textContent = fmt(pack);
+    shelfLifeEl.textContent = `${months} months (${ptype.value})`;
+    bestByEl.textContent = fmt(bestBy);
+
+    if(diffDays >= 0){
+      setPill('good','IN DATE');
+      daysRemainingEl.textContent = `${diffDays} day(s)`;
+    } else {
+      setPill('bad','OUT OF DATE');
+      daysRemainingEl.textContent = `${diffDays} day(s)`;
+    }
+  }
+
+  // init
+  asofEl.value = todayISO();
+  document.getElementById('check').addEventListener('click', check);
+  document.getElementById('clear').addEventListener('click', function(){ codeEl.value=''; clearOut(); codeEl.focus(); });
+  codeEl.addEventListener('keydown', function(e){ if(e.key === 'Enter') check(); });
+  ptype.addEventListener('change', function(){ if(codeEl.value.trim()) check(); });
+  asofEl.addEventListener('change', function(){ if(codeEl.value.trim()) check(); });
+})();
+</script>
+</body>
+</html>
